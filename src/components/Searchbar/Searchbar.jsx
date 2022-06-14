@@ -1,4 +1,5 @@
 import { Component } from 'react';
+import PropTypes from 'prop-types';
 import { FcSearch } from 'react-icons/fc';
 import { toast } from 'react-toastify';
 import s from './Searchbar.module.css';
@@ -15,16 +16,14 @@ class Searchbar extends Component {
   handleSubmit = e => {
     e.preventDefault();
     if (this.state.imageName.trim() === '') {
-      toast.warning('Please, add some words');
-      return;
+      return toast.warning('Please, add some words');
     }
     this.props.onSubmit(this.state.imageName);
     this.resetForm(e);
   };
 
-  resetForm = e => {
+  resetForm = () => {
     this.setState({ imageName: '' });
-    e.currentTarget.elements.input.value = '';
   };
 
   render() {
@@ -51,5 +50,9 @@ class Searchbar extends Component {
     );
   }
 }
+
+Searchbar.propTypes = {
+  onSubmit: PropTypes.func.isRequired,
+};
 
 export default Searchbar;
