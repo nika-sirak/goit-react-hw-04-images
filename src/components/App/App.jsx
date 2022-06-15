@@ -32,41 +32,33 @@ class App extends Component {
   };
 
   componentDidUpdate(_, prevState) {
-    const prevImgName = prevState.imageName;
-    const nextImgName = this.state.imageName;
-    const prevPage = prevState.page;
-    const nextPage = this.state.page;
+    const { imageName, page } = this.state;
 
-    if (prevImgName !== nextImgName) {
+    if (prevState.imageName !== imageName || prevState.page !== page) {
       this.setState({ status: Status.PENDING });
       api
-        .fetchImages(nextImgName, nextPage)
-        .then(({ hits }) => {
-          return this.setState({ images: hits, status: Status.RESOLVED });
-        })
-        .catch(error => this.setState({ error, status: Status.REJECTED }));
-    }
-
-    if (prevPage !== nextPage && prevImgName === nextImgName) {
-      this.setState({ status: Status.PENDING });
-      api
-        .fetchImages(nextImgName, nextPage)
+        .fetchImages(imageName, page)
         .then(({ hits }) =>
-          this.setState({
+          this.setState(prevState => ({
             images: [...prevState.images, ...hits],
             status: Status.RESOLVED,
-          })
+          }))
         )
         .catch(error => this.setState({ error, status: Status.REJECTED }));
     }
   }
 
-  toggleModal = () => {
-    this.setState(({ showModal }) => ({ showModal: !showModal }));
+  handleFormSubmit = imageName => {
+    this.setState({ imageName });
+    this.resetImgGallery();
   };
 
-  handleFormSubmit = imageName => {
-    this.setState({ imageName, page: 1 });
+  resetImgGallery = () => {
+    this.setState({ page: 1, images: [] });
+  };
+
+  toggleModal = () => {
+    this.setState(({ showModal }) => ({ showModal: !showModal }));
   };
 
   handleImgClick = (src, alt) => {
@@ -87,16 +79,28 @@ class App extends Component {
       return (
         <div className={s.app}>
           <Searchbar onSubmit={this.handleFormSubmit} />
+          <ToastContainer />
         </div>
       );
     }
 
     if (status === Status.PENDING) {
-      return <Loader />;
+      return (
+        <div className={s.app}>
+          <Searchbar onSubmit={this.handleFormSubmit} />
+          <ImageGallery images={images} onItemClick={this.handleImgClick} />
+          <Loader />;
+        </div>
+      );
     }
 
     if (status === Status.REJECTED) {
-      return <div>{error.message}</div>;
+      return (
+        <div className={s.app}>
+          <Searchbar onSubmit={this.handleFormSubmit} />
+          <div>{error.message}</div>;
+        </div>
+      );
     }
 
     if (status === Status.RESOLVED) {
@@ -107,9 +111,7 @@ class App extends Component {
           <ImageGallery images={images} onItemClick={this.handleImgClick} />
           <Button onClick={this.handleButtonClick} />
           {showModal && (
-            <Modal onClose={this.toggleModal}>
-              <img src={src} alt={alt} width="600" />
-            </Modal>
+            <Modal onClose={this.toggleModal} src={src} alt={alt} />
           )}
         </div>
       );
