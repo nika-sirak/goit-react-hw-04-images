@@ -6,7 +6,7 @@ import ImageGallery from 'components/ImageGallery/ImageGallery';
 import Modal from 'components/Modal/Modal';
 import Loader from 'components/Loader/Loader';
 import Button from 'components/Button/Button';
-import api from '../../services/image-api';
+import fetchImages from '../../services/image-api';
 import 'react-toastify/dist/ReactToastify.css';
 import 'react-loader-spinner/dist/loader/css/react-spinner-loader.css';
 import s from './App.module.css';
@@ -31,23 +31,23 @@ class App extends Component {
     modalImg: {},
   };
 
-  componentDidUpdate(_, prevState) {
+  async componentDidUpdate(_, prevState) {
     const { imageName, page } = this.state;
 
     if (prevState.imageName !== imageName || prevState.page !== page) {
       this.setState({ status: Status.PENDING });
-      api
-        .fetchImages(imageName, page)
-        .then(({ hits }) =>
-          this.setState(prevState => ({
-            images: [...prevState.images, ...hits],
-            status: Status.RESOLVED,
-          }))
-        )
-        .catch(error => this.setState({ error, status: Status.REJECTED }));
+      try {
+        const images = await fetchImages(imageName, page);
+
+        this.setState(prevState => ({
+          images: [...prevState.images, ...images],
+          status: Status.RESOLVED,
+        }));
+      } catch (error) {
+        this.setState({ error, status: Status.REJECTED });
+      }
     }
   }
-
   handleFormSubmit = imageName => {
     this.setState({ imageName });
     this.resetImgGallery();
@@ -75,47 +75,31 @@ class App extends Component {
     const { images, status, error, showModal, modalImg } = this.state;
     const { src, alt } = modalImg;
 
-    if (status === Status.IDLE) {
-      return (
-        <div className={s.app}>
-          <Searchbar onSubmit={this.handleFormSubmit} />
-          <ToastContainer />
-        </div>
-      );
-    }
+    return (
+      <div className={s.app}>
+        <Searchbar onSubmit={this.handleFormSubmit} />
+        <ToastContainer />
 
-    if (status === Status.PENDING) {
-      return (
-        <div className={s.app}>
-          <Searchbar onSubmit={this.handleFormSubmit} />
-          <ImageGallery images={images} onItemClick={this.handleImgClick} />
-          <Loader />;
-        </div>
-      );
-    }
+        {status === Status.PENDING && (
+          <>
+            <ImageGallery images={images} onItemClick={this.handleImgClick} />
+            <Loader />
+          </>
+        )}
 
-    if (status === Status.REJECTED) {
-      return (
-        <div className={s.app}>
-          <Searchbar onSubmit={this.handleFormSubmit} />
-          <div>{error.message}</div>;
-        </div>
-      );
-    }
+        {status === Status.RESOLVED && (
+          <>
+            <ImageGallery images={images} onItemClick={this.handleImgClick} />
+            <Button onClick={this.handleButtonClick} />
+            {showModal && (
+              <Modal onClose={this.toggleModal} src={src} alt={alt} />
+            )}
+          </>
+        )}
 
-    if (status === Status.RESOLVED) {
-      return (
-        <div className={s.app}>
-          <ToastContainer />
-          <Searchbar onSubmit={this.handleFormSubmit} />
-          <ImageGallery images={images} onItemClick={this.handleImgClick} />
-          <Button onClick={this.handleButtonClick} />
-          {showModal && (
-            <Modal onClose={this.toggleModal} src={src} alt={alt} />
-          )}
-        </div>
-      );
-    }
+        {status === Status.REJECTED && <div>{error.message}</div>}
+      </div>
+    );
   }
 }
 
