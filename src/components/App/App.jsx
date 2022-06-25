@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import Scroll from 'react-scroll';
 import { ToastContainer } from 'react-toastify';
 import Searchbar from 'components/Searchbar/Searchbar';
@@ -20,87 +20,86 @@ const Status = {
 
 const scroll = Scroll.animateScroll;
 
-class App extends Component {
-  state = {
-    imageName: '',
-    images: [],
-    status: Status.IDLE,
-    error: null,
-    page: 1,
-    showModal: false,
-    modalImg: {},
-  };
+function App() {
+  const [imageName, setImageName] = useState('');
+  const [images, setImages] = useState([]);
+  const [status, setStatus] = useState(Status.IDLE);
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [modalImg, setModalImg] = useState({});
 
-  async componentDidUpdate(_, prevState) {
-    const { imageName, page } = this.state;
-
-    if (prevState.imageName !== imageName || prevState.page !== page) {
-      this.setState({ status: Status.PENDING });
-      try {
-        const images = await fetchImages(imageName, page);
-
-        this.setState(prevState => ({
-          images: [...prevState.images, ...images],
-          status: Status.RESOLVED,
-        }));
-      } catch (error) {
-        this.setState({ error, status: Status.REJECTED });
-      }
+  useEffect(() => {
+    if (imageName === '') {
+      return;
     }
-  }
-  handleFormSubmit = imageName => {
-    this.setState({ imageName });
-    this.resetImgGallery();
+
+    const fetchData = async () => {
+      setStatus(Status.PENDING);
+
+      try {
+        const pixaImgs = await fetchImages(imageName, page);
+
+        setImages(prevState => [...prevState, ...pixaImgs]);
+        setStatus(Status.RESOLVED);
+      } catch (error) {
+        setError(error);
+        setStatus(Status.REJECTED);
+      }
+    };
+
+    fetchData();
+  }, [imageName, page]);
+
+  const handleFormSubmit = imageName => {
+    setImageName(imageName);
+    resetImgGallery();
   };
 
-  resetImgGallery = () => {
-    this.setState({ page: 1, images: [] });
+  const resetImgGallery = () => {
+    setPage(1);
+    setImages([]);
   };
 
-  toggleModal = () => {
-    this.setState(({ showModal }) => ({ showModal: !showModal }));
+  const toggleModal = () => {
+    setShowModal(!showModal);
   };
 
-  handleImgClick = (src, alt) => {
-    this.toggleModal();
-    this.setState({ modalImg: { src, alt } });
+  const handleImgClick = (src, alt) => {
+    toggleModal();
+    setModalImg({ src, alt });
   };
 
-  handleButtonClick = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
+  const handleButtonClick = () => {
+    setPage(prevState => prevState + 1);
     scroll.scrollToBottom();
   };
 
-  render() {
-    const { images, status, error, showModal, modalImg } = this.state;
-    const { src, alt } = modalImg;
+  const { src, alt } = modalImg;
 
-    return (
-      <div className={s.app}>
-        <Searchbar onSubmit={this.handleFormSubmit} />
-        <ToastContainer />
+  return (
+    <div className={s.app}>
+      <Searchbar onSubmit={handleFormSubmit} />
+      <ToastContainer />
 
-        {status === Status.PENDING && (
-          <>
-            <ImageGallery images={images} onItemClick={this.handleImgClick} />
-            <Loader />
-          </>
-        )}
+      {status === Status.PENDING && (
+        <>
+          <ImageGallery images={images} onItemClick={handleImgClick} />
+          <Loader />
+        </>
+      )}
 
-        {status === Status.RESOLVED && (
-          <>
-            <ImageGallery images={images} onItemClick={this.handleImgClick} />
-            <Button onClick={this.handleButtonClick} />
-            {showModal && (
-              <Modal onClose={this.toggleModal} src={src} alt={alt} />
-            )}
-          </>
-        )}
+      {status === Status.RESOLVED && (
+        <>
+          <ImageGallery images={images} onItemClick={handleImgClick} />
+          <Button onClick={handleButtonClick} />
+          {showModal && <Modal onClose={toggleModal} src={src} alt={alt} />}
+        </>
+      )}
 
-        {status === Status.REJECTED && <div>{error.message}</div>}
-      </div>
-    );
-  }
+      {status === Status.REJECTED && <div>{error.message}</div>}
+    </div>
+  );
 }
 
 export default App;
